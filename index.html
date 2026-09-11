@@ -234,6 +234,9 @@ main{padding:14px;max-width:900px;margin:0 auto}
     <div id="reslist"></div>
     <button class="btn ghost sm" id="addres" onclick="openRes(null)">＋ 構成員を追加</button>
 
+    <div class="sec" style="margin-top:16px">村外の家族・親戚</div>
+    <div id="extlist"></div>
+
     <div class="sec">この世帯のお祝い・見舞い記録</div>
     <div id="hhev"></div>
     <button class="btn ghost sm" id="addev" onclick="openEv(null,curHH&&curHH.id,null)">＋ 記録を追加</button>
@@ -272,11 +275,62 @@ main{padding:14px;max-width:900px;margin:0 auto}
         <div class="field"><label>状態</label>
           <select id="r-status"><option>在住</option><option>転出</option><option>死亡</option></select></div>
       </div>
+      <div class="field">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input id="r-external" type="checkbox" onchange="toggleExternal()">
+          村外家族（この村に住んでいない兄弟・親戚など）
+        </label>
+      </div>
+      <div class="field" id="r-address-wrap" style="display:none">
+        <label>現住所</label>
+        <input id="r-address" placeholder="例: 那覇市首里…">
+      </div>
       <div class="field"><label>備考</label><textarea id="r-notes"></textarea></div>
       <div class="muted" id="r-age"></div>
     </div>
+
+    <div class="card" id="r-relations-card" style="margin-top:12px">
+      <div class="sec" style="display:flex;align-items:center;justify-content:space-between">
+        <div>関係のある人</div>
+        <button class="btn ghost sm" id="addrel" onclick="openRel()">＋ 関係を追加</button>
+      </div>
+      <div id="r-relations" class="muted">保存すると追加できます</div>
+    </div>
+
     <div style="margin-top:30px;padding-top:16px;border-top:1px solid var(--line)">
       <button class="btn danger sm" id="delres" onclick="delRes()">この構成員を削除</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 関係追加モーダル ===== -->
+<div class="modal" id="m-rel">
+  <div class="mhead">
+    <button class="btn ghost sm" onclick="closeM('m-rel')">← 戻る</button>
+    <div style="font-weight:700">関係を追加</div>
+    <div class="spacer"></div>
+    <button class="btn sm" onclick="saveRel()">追加</button>
+  </div>
+  <div class="mbody">
+    <div class="card">
+      <div class="field"><label>関係</label>
+        <input id="rel-kind" list="rellinklist" placeholder="兄弟 / 親子 / 夫婦 / 従兄弟 / 親戚 …">
+        <datalist id="rellinklist">
+          <option>兄弟</option><option>姉妹</option><option>兄妹</option>
+          <option>親子</option><option>夫婦</option><option>祖父母-孫</option>
+          <option>おじ-甥</option><option>おば-姪</option>
+          <option>従兄弟</option><option>従姉妹</option>
+          <option>親戚</option><option>婚姻</option><option>養子</option>
+        </datalist>
+      </div>
+      <div class="field"><label>相手（村内・村外どちらでも）</label>
+        <input id="rel-search" placeholder="名前・かな・屋号で検索" oninput="renderRelPicker()">
+        <div id="rel-picker" class="list" style="max-height:320px;overflow:auto;margin-top:6px"></div>
+      </div>
+      <div class="muted" id="rel-picked">相手を選んでください</div>
+      <div class="field" style="margin-top:8px"><label>メモ（任意）</label>
+        <input id="rel-detail" placeholder="例: 兄が◯◯家、次男を養子縁組など">
+      </div>
     </div>
   </div>
 </div>
@@ -326,7 +380,7 @@ const sb = window.supabase.createClient(SB_URL, SB_KEY, {
 });
 
 /* ===================== 状態 ===================== */
-let HH = [], RES = [], EV = [];
+let HH = [], RES = [], EV = [], REL = [];
 let curHH = null, curRes = null, curEv = null;
 let hanSel = '', evSel = '', tYear = new Date().getFullYear();
 let map = null, pickMap = null, pickMarker = null, pickLat = null, pickLng = null;
@@ -417,20 +471,25 @@ async function showApp(){
 
 /* ===================== 読み込み ===================== */
 async function loadAll(){
-  const [a,b,c] = await Promise.all([
+  const [a,b,c,d] = await Promise.all([
     sb.from('nerome_households').select('*').order('han').order('yagou'),
     sb.from('nerome_residents').select('*').order('sort_order').order('id'),
-    sb.from('nerome_events').select('*').order('event_date',{ascending:false})
+    sb.from('nerome_events').select('*').order('event_date',{ascending:false}),
+    sb.from('nerome_relations').select('*').order('id')
   ]);
-  if(a.error||b.error||c.error){ toast('読み込みエラー'); console.error(a.error,b.error,c.error); return; }
-  HH=a.data||[]; RES=b.data||[]; EV=c.data||[];
+  if(a.error||b.error||c.error||d.error){ toast('読み込みエラー'); console.error(a.error,b.error,c.error,d.error); return; }
+  HH=a.data||[]; RES=b.data||[]; EV=c.data||[]; REL=d.data||[];
   const live = HH.filter(h=>h.status==='在住').length;
-  const people = RES.filter(r=>r.status==='在住').length;
+  const people = RES.filter(r=>r.status==='在住' && !r.external).length;
   document.getElementById('stat').textContent = `${live}世帯 / ${people}人`;
   renderHanFilter(); renderHH(); renderEvFilter();
   if(document.getElementById('p-map').classList.contains('on')) initMap();
 }
-function membersOf(id){ return RES.filter(r=>r.household_id===id); }
+function membersOf(id){ return RES.filter(r=>r.household_id===id && !r.external); }
+function externalsOf(id){ return RES.filter(r=>r.household_id===id && r.external); }
+function relationsOf(id){ return REL.filter(x=>x.from_id===id || x.to_id===id); }
+function resById(id){ return RES.find(r=>r.id===id); }
+function householdOf(rid){ const r=resById(rid); return r ? HH.find(h=>h.id===r.household_id) : null; }
 
 /* ===================== 世帯一覧 ===================== */
 function renderHanFilter(){
@@ -559,10 +618,15 @@ function clearPin(){ pickLat=null; pickLng=null; drawPin(); }
 /* ===================== 構成員 ===================== */
 function renderRes(){
   const el=document.getElementById('reslist');
-  if(!curHH){ el.innerHTML='<div class="muted">先に世帯を保存すると構成員を追加できます。</div>'; return; }
+  const ext=document.getElementById('extlist');
+  if(!curHH){
+    el.innerHTML='<div class="muted">先に世帯を保存すると構成員を追加できます。</div>';
+    if(ext) ext.innerHTML='';
+    return;
+  }
   const list=membersOf(curHH.id);
-  if(!list.length){ el.innerHTML='<div class="muted">まだ構成員が登録されていません。</div>'; return; }
-  el.innerHTML=list.map(r=>{
+  if(!list.length){ el.innerHTML='<div class="muted">まだ構成員が登録されていません。</div>'; }
+  else el.innerHTML=list.map(r=>{
     const a=ageFull(r.birth_date), k=kazoeIn(r.birth_date,tYear);
     return `<div class="res" onclick="openRes(${r.id})">
       <div class="res-main">
@@ -576,42 +640,147 @@ function renderRes(){
       <div class="muted">›</div>
     </div>`;
   }).join('');
+  if(ext){
+    const exs=externalsOf(curHH.id);
+    ext.innerHTML = exs.length ? exs.map(r=>`
+      <div class="res" onclick="openRes(${r.id})">
+        <div class="res-main">
+          <div class="res-name">${esc(r.name||'')}
+            ${r.relation?`<span class="chip gray" style="margin-left:6px">${esc(r.relation)}</span>`:''}
+            <span class="chip warn" style="margin-left:4px">村外</span></div>
+          <div class="res-sub">${esc(r.address||'')}${r.phone?`　${esc(r.phone)}`:''}</div>
+        </div>
+        <div class="muted">›</div>
+      </div>`).join('')
+      : '<div class="muted">構成員の詳細から「村外家族」チェックを入れて登録してください。</div>';
+  }
 }
 function openRes(id){
   curRes = id ? RES.find(r=>r.id===id) : null;
   const r = curRes || {};
   setv('r-name',r.name); setv('r-kana',r.kana); setv('r-rel',r.relation);
   setv('r-bd',r.birth_date); setv('r-phone',r.phone); setv('r-notes',r.notes);
+  setv('r-address', r.address);
+  document.getElementById('r-external').checked = !!r.external;
   document.getElementById('r-gender').value=r.gender||'';
   document.getElementById('r-status').value=r.status||'在住';
   document.getElementById('delres').style.display = curRes?'inline-block':'none';
+  document.getElementById('addrel').style.display = curRes?'inline-block':'none';
+  toggleExternal();
   const a=ageFull(r.birth_date);
   document.getElementById('r-age').textContent = r.birth_date?`満${a}歳 / 数え${kazoeIn(r.birth_date,new Date().getFullYear())}歳`:'';
+  renderRelations();
   openM('m-res');
+}
+function toggleExternal(){
+  const ex = document.getElementById('r-external').checked;
+  document.getElementById('r-address-wrap').style.display = ex?'block':'none';
+  if(ex) document.getElementById('r-status').value='転出';
 }
 async function saveRes(){
   if(!curHH){ toast('世帯が未保存です'); return; }
+  const ex = document.getElementById('r-external').checked;
   const p={ household_id:curHH.id, name:v('r-name')||null, kana:v('r-kana')||null,
     relation:v('r-rel')||null, birth_date:normDate(v('r-bd')),
     gender:document.getElementById('r-gender').value||null,
     phone:v('r-phone')||null, status:document.getElementById('r-status').value,
-    notes:v('r-notes')||null, is_head:v('r-rel')==='世帯主',
+    notes:v('r-notes')||null, is_head:!ex && v('r-rel')==='世帯主',
+    external: ex, address: ex ? (v('r-address')||null) : null,
     updated_at:new Date().toISOString() };
   if(!p.name){ toast('氏名を入れてください'); return; }
   const r = curRes
-    ? await sb.from('nerome_residents').update(p).eq('id',curRes.id)
-    : await sb.from('nerome_residents').insert(p);
+    ? await sb.from('nerome_residents').update(p).eq('id',curRes.id).select().single()
+    : await sb.from('nerome_residents').insert(p).select().single();
   if(r.error){ toast('保存エラー: '+r.error.message); return; }
-  closeM('m-res'); await loadAll();
-  curHH = HH.find(h=>h.id===curHH.id); renderRes();
+  await loadAll();
+  curRes = RES.find(x=>x.id===r.data.id);
+  curHH = HH.find(h=>h.id===curHH.id);
+  renderRes(); renderRelations();
   toast('保存しました');
 }
 async function delRes(){
   if(!curRes) return;
-  if(!confirm('この構成員を削除します。よろしいですか？')) return;
+  if(!confirm('この構成員を削除します。よろしいですか？（関連する「関係」も削除されます）')) return;
   const { error } = await sb.from('nerome_residents').delete().eq('id',curRes.id);
   if(error){ toast('削除エラー'); return; }
   closeM('m-res'); await loadAll(); renderRes(); toast('削除しました');
+}
+
+/* ---- 関係リンク ---- */
+function resLabel(r){
+  const h = HH.find(x=>x.id===r.household_id);
+  const yagou = h?(h.yagou||h.head_name||''):'';
+  const bd = r.birth_date?`　${r.birth_date}生`:'';
+  const ex = r.external?'（村外）':'';
+  const addr = r.external && r.address?`　${r.address}`:'';
+  return `${r.name||'（無名）'}${ex}　<span class="muted">${esc(yagou)}${esc(bd)}${esc(addr)}</span>`;
+}
+function renderRelations(){
+  const el = document.getElementById('r-relations');
+  if(!curRes){ el.innerHTML='<div class="muted">保存すると追加できます</div>'; return; }
+  const list = relationsOf(curRes.id);
+  if(!list.length){ el.innerHTML='<div class="muted">まだ登録がありません。「＋ 関係を追加」から追加してください。</div>'; return; }
+  el.innerHTML = list.map(x=>{
+    const otherId = x.from_id===curRes.id ? x.to_id : x.from_id;
+    const other = resById(otherId);
+    if(!other) return '';
+    return `<div class="res">
+      <div class="res-main">
+        <div class="res-name">
+          <span class="chip gold" style="margin-right:6px">${esc(x.kind)}</span>
+          ${resLabel(other)}
+        </div>
+        ${x.detail?`<div class="res-sub">${esc(x.detail)}</div>`:''}
+      </div>
+      <button class="btn ghost sm" onclick="delRel(${x.id})">削除</button>
+    </div>`;
+  }).join('');
+}
+
+let relPicked = null;
+function openRel(){
+  if(!curRes){ toast('先に構成員を保存してください'); return; }
+  relPicked = null;
+  setv('rel-kind',''); setv('rel-search',''); setv('rel-detail','');
+  document.getElementById('rel-picked').textContent = '相手を選んでください';
+  renderRelPicker();
+  openM('m-rel');
+}
+function renderRelPicker(){
+  const q = norm(document.getElementById('rel-search').value);
+  const excludeIds = new Set([curRes.id, ...relationsOf(curRes.id).map(x=>x.from_id===curRes.id?x.to_id:x.from_id)]);
+  const list = RES.filter(r=>{
+    if(excludeIds.has(r.id)) return false;
+    if(!q) return true;
+    const h = HH.find(x=>x.id===r.household_id);
+    return (norm(r.name)+norm(r.kana)+norm(h?(h.yagou||''):'')+norm(r.address)).includes(q);
+  }).slice(0,50);
+  const el = document.getElementById('rel-picker');
+  if(!list.length){ el.innerHTML='<div class="muted" style="padding:8px">該当なし。まだ登録がなければ、その人が属する世帯を開いて「構成員を追加」→「村外家族」で登録してください。</div>'; return; }
+  el.innerHTML = list.map(r=>`<div class="res" onclick="pickRel(${r.id})">
+    <div class="res-main"><div class="res-name">${resLabel(r)}</div></div>
+    <div class="muted">選択</div>
+  </div>`).join('');
+}
+function pickRel(id){
+  relPicked = id;
+  const r = resById(id);
+  document.getElementById('rel-picked').innerHTML = `選択中: ${resLabel(r)}`;
+}
+async function saveRel(){
+  if(!curRes){ toast('構成員が未選択'); return; }
+  if(!relPicked){ toast('相手を選んでください'); return; }
+  const kind = v('rel-kind'); if(!kind){ toast('関係を入力してください'); return; }
+  const p = { from_id: curRes.id, to_id: relPicked, kind, detail: v('rel-detail')||null };
+  const { error } = await sb.from('nerome_relations').insert(p);
+  if(error){ toast('追加エラー: '+error.message); return; }
+  closeM('m-rel'); await loadAll(); renderRelations(); toast('追加しました');
+}
+async function delRel(id){
+  if(!confirm('この関係を削除します。よろしいですか？')) return;
+  const { error } = await sb.from('nerome_relations').delete().eq('id',id);
+  if(error){ toast('削除エラー'); return; }
+  await loadAll(); renderRelations(); toast('削除しました');
 }
 
 /* ===================== 地図 ===================== */
