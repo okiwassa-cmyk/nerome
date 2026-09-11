@@ -143,6 +143,7 @@ main{padding:14px;max-width:900px;margin:0 auto}
     <button class="tab on" data-p="p-hh"  onclick="go('p-hh',this)">世帯</button>
     <button class="tab"    data-p="p-map" onclick="go('p-map',this)">地図</button>
     <button class="tab"    data-p="p-pos" onclick="go('p-pos',this)">役員</button>
+    <button class="tab"    data-p="p-cal" onclick="go('p-cal',this)">行事</button>
     <button class="tab"    data-p="p-toshi" onclick="go('p-toshi',this)">年祝い</button>
     <button class="tab"    data-p="p-ev"  onclick="go('p-ev',this)">記録</button>
   </div>
@@ -192,6 +193,19 @@ main{padding:14px;max-width:900px;margin:0 auto}
     <div id="pos-active"></div>
     <div class="sec" style="margin-top:16px">履歴（退任）</div>
     <div id="pos-past"></div>
+  </div>
+
+  <!-- ---- 行事 ---- -->
+  <div id="p-cal" class="page">
+    <div class="row" style="margin-bottom:10px;align-items:center;gap:6px">
+      <button class="btn ghost sm" onclick="shiftCalYear(-1)">◀ 前の年</button>
+      <div id="cal-year" style="font-weight:700;min-width:80px;text-align:center"></div>
+      <button class="btn ghost sm" onclick="shiftCalYear(1)">次の年 ▶</button>
+      <div class="spacer"></div>
+      <button class="btn" onclick="openCal(null)">＋ 行事を追加</button>
+    </div>
+    <div class="muted" style="margin-bottom:8px">旧暦の日付は西暦に自動変換して表示します。</div>
+    <div id="callist"></div>
   </div>
 
   <!-- ---- 記録 ---- -->
@@ -351,6 +365,70 @@ main{padding:14px;max-width:900px;margin:0 auto}
   </div>
 </div>
 
+<!-- ===== 行事モーダル ===== -->
+<div class="modal" id="m-cal">
+  <div class="mhead">
+    <button class="btn ghost sm" onclick="closeM('m-cal')">← 戻る</button>
+    <div style="font-weight:700">行事</div>
+    <div class="spacer"></div>
+    <button class="btn sm" onclick="saveCal()">保存</button>
+  </div>
+  <div class="mbody">
+    <div class="card">
+      <div class="field"><label>名前</label><input id="c-name" placeholder="例: 区民運動会"></div>
+      <div class="field"><label>暦の種類</label>
+        <select id="c-type" onchange="onCalTypeChange()">
+          <option value="lunar">旧暦（毎年）</option>
+          <option value="solar">西暦（毎年・月日固定）</option>
+          <option value="solar_term">二十四節気（清明・冬至など）</option>
+          <option value="one_shot">単発（特定の年月日）</option>
+        </select>
+      </div>
+      <div id="c-lunar-wrap" class="grid2">
+        <div class="field"><label>旧暦の月</label><input id="c-lmonth" type="number" min="1" max="12" inputmode="numeric"></div>
+        <div class="field"><label>旧暦の日</label><input id="c-lday" type="number" min="1" max="30" inputmode="numeric"></div>
+      </div>
+      <div id="c-solar-wrap" class="grid2" style="display:none">
+        <div class="field"><label>西暦の月</label><input id="c-smonth" type="number" min="1" max="12" inputmode="numeric"></div>
+        <div class="field"><label>西暦の日</label><input id="c-sday" type="number" min="1" max="31" inputmode="numeric"></div>
+      </div>
+      <div id="c-term-wrap" class="field" style="display:none">
+        <label>節気名</label>
+        <select id="c-term">
+          <option value="立春">立春</option><option value="雨水">雨水</option>
+          <option value="啓蟄">啓蟄</option><option value="春分">春分</option>
+          <option value="清明">清明</option><option value="穀雨">穀雨</option>
+          <option value="立夏">立夏</option><option value="小満">小満</option>
+          <option value="芒種">芒種</option><option value="夏至">夏至</option>
+          <option value="小暑">小暑</option><option value="大暑">大暑</option>
+          <option value="立秋">立秋</option><option value="処暑">処暑</option>
+          <option value="白露">白露</option><option value="秋分">秋分</option>
+          <option value="寒露">寒露</option><option value="霜降">霜降</option>
+          <option value="立冬">立冬</option><option value="小雪">小雪</option>
+          <option value="大雪">大雪</option><option value="冬至">冬至</option>
+          <option value="小寒">小寒</option><option value="大寒">大寒</option>
+        </select>
+      </div>
+      <div id="c-oneshot-wrap" class="field" style="display:none">
+        <label>日付</label>
+        <input id="c-oneshot" type="text" inputmode="numeric" placeholder="YYYY-MM-DD">
+      </div>
+      <div class="field"><label>説明</label><input id="c-desc" placeholder="例: 一族で墓参り、区で綱引きなど"></div>
+      <div class="field"><label>担当（構成員から選択・任意）</label>
+        <select id="c-res"><option value="">— 選択なし —</option></select>
+      </div>
+      <div class="field"><label>備考</label><textarea id="c-notes"></textarea></div>
+      <label style="display:flex;align-items:center;gap:8px;margin-top:6px">
+        <input id="c-active" type="checkbox" checked style="width:18px;height:18px">
+        表示する（オフにすると一覧から隠れる）
+      </label>
+    </div>
+    <div style="margin-top:30px;padding-top:16px;border-top:1px solid var(--line)">
+      <button class="btn danger sm" id="delcal" onclick="delCal()">この行事を削除</button>
+    </div>
+  </div>
+</div>
+
 <!-- ===== 役職モーダル ===== -->
 <div class="modal" id="m-pos">
   <div class="mhead">
@@ -426,6 +504,7 @@ main{padding:14px;max-width:900px;margin:0 auto}
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lunar-javascript@1.6.13/lunar.min.js"></script>
 <script>
 /* ===================== 設定 ===================== */
 const SB_URL = 'https://mtsdhheqddrckksiqlim.supabase.co';
@@ -436,9 +515,9 @@ const sb = window.supabase.createClient(SB_URL, SB_KEY, {
 });
 
 /* ===================== 状態 ===================== */
-let HH = [], RES = [], EV = [], REL = [], POS = [];
-let curHH = null, curRes = null, curEv = null, curPos = null;
-let hanSel = '', evSel = '', tYear = new Date().getFullYear();
+let HH = [], RES = [], EV = [], REL = [], POS = [], CAL = [];
+let curHH = null, curRes = null, curEv = null, curPos = null, curCal = null;
+let hanSel = '', evSel = '', tYear = new Date().getFullYear(), calYear = new Date().getFullYear();
 let map = null, pickMap = null, pickMarker = null, pickLat = null, pickLng = null;
 let markers = [];
 
@@ -470,6 +549,7 @@ function go(p,el){
   if(p==='p-toshi') renderToshi();
   if(p==='p-ev') renderEv();
   if(p==='p-pos') renderPositions();
+  if(p==='p-cal') renderCal();
 }
 function openM(id){ document.getElementById(id).classList.add('on'); window.scrollTo(0,0); }
 function closeM(id){ document.getElementById(id).classList.remove('on'); }
@@ -528,15 +608,16 @@ async function showApp(){
 
 /* ===================== 読み込み ===================== */
 async function loadAll(){
-  const [a,b,c,d,e] = await Promise.all([
+  const [a,b,c,d,e,f] = await Promise.all([
     sb.from('nerome_households').select('*').order('han').order('yagou'),
     sb.from('nerome_residents').select('*').order('sort_order').order('id'),
     sb.from('nerome_events').select('*').order('event_date',{ascending:false}),
     sb.from('nerome_relations').select('*').order('id'),
-    sb.from('nerome_positions').select('*').order('start_date',{ascending:false}).order('id')
+    sb.from('nerome_positions').select('*').order('start_date',{ascending:false}).order('id'),
+    sb.from('nerome_annual_events').select('*').order('sort_order').order('id')
   ]);
-  if(a.error||b.error||c.error||d.error||e.error){ toast('読み込みエラー'); console.error(a.error,b.error,c.error,d.error,e.error); return; }
-  HH=a.data||[]; RES=b.data||[]; EV=c.data||[]; REL=d.data||[]; POS=e.data||[];
+  if(a.error||b.error||c.error||d.error||e.error||f.error){ toast('読み込みエラー'); console.error(a.error,b.error,c.error,d.error,e.error,f.error); return; }
+  HH=a.data||[]; RES=b.data||[]; EV=c.data||[]; REL=d.data||[]; POS=e.data||[]; CAL=f.data||[];
   const live = HH.filter(h=>h.status==='在住').length;
   const people = RES.filter(r=>r.status==='在住' && !r.external).length;
   document.getElementById('stat').textContent = `${live}世帯 / ${people}人`;
@@ -1069,6 +1150,140 @@ async function delPos(){
   const { error } = await sb.from('nerome_positions').delete().eq('id',curPos.id);
   if(error){ toast('削除エラー'); return; }
   closeM('m-pos'); await loadAll(); renderPositions(); toast('削除しました');
+}
+
+/* ===================== 行事（旧暦） ===================== */
+function shiftCalYear(d){ calYear+=d; renderCal(); }
+function calcEventDate(ev, year){
+  try {
+    if(ev.cal_type==='solar'){
+      if(!ev.solar_month||!ev.solar_day) return null;
+      const dt = new Date(Date.UTC(year, ev.solar_month-1, ev.solar_day));
+      return isNaN(dt) ? null : dt.toISOString().slice(0,10);
+    }
+    if(ev.cal_type==='one_shot'){ return ev.one_shot_date||null; }
+    if(!window.Lunar || !window.Solar) return null;
+    if(ev.cal_type==='lunar'){
+      if(!ev.lunar_month||!ev.lunar_day) return null;
+      const month = ev.lunar_leap ? -Math.abs(ev.lunar_month) : ev.lunar_month;
+      // handle "last day of month" gracefully when the requested day exceeds the month's length
+      for(let day=ev.lunar_day; day>=Math.min(ev.lunar_day,28); day--){
+        try {
+          const lu = Lunar.fromYmd(year, month, day);
+          const so = lu.getSolar();
+          return `${so.getYear()}-${String(so.getMonth()).padStart(2,'0')}-${String(so.getDay()).padStart(2,'0')}`;
+        } catch(_){ /* try one day earlier */ }
+      }
+      return null;
+    }
+    if(ev.cal_type==='solar_term'){
+      if(!ev.solar_term_name) return null;
+      // JieQiTable spans from 冬至 of prev year forward; try current then next year's table
+      for(const baseY of [year, year+1]){
+        const jq = Solar.fromYmd(baseY, 6, 1).getLunar().getJieQiTable();
+        const s = jq[ev.solar_term_name];
+        if(s && s.getYear()===year){
+          return `${s.getYear()}-${String(s.getMonth()).padStart(2,'0')}-${String(s.getDay()).padStart(2,'0')}`;
+        }
+      }
+      return null;
+    }
+  } catch(e){ console.warn('calcEventDate', ev, e); }
+  return null;
+}
+function renderCal(){
+  document.getElementById('cal-year').textContent = `${calYear}年`;
+  const el = document.getElementById('callist');
+  // For each event, try calYear-1, calYear, calYear+1 as source; keep occurrences whose Gregorian date falls in calYear
+  const items = [];
+  CAL.filter(c=>c.active!==false).forEach(c=>{
+    const seen = new Set();
+    for(const srcY of [calYear-1, calYear, calYear+1]){
+      const d = calcEventDate(c, srcY);
+      if(d && d.slice(0,4)==String(calYear) && !seen.has(d)){
+        seen.add(d);
+        items.push({...c, _date: d});
+      }
+    }
+  });
+  const list = items.sort((a,b)=>a._date.localeCompare(b._date));
+  if(!list.length){ el.innerHTML='<div class="empty">この年の行事は登録されていません</div>'; return; }
+  const today = new Date().toISOString().slice(0,10);
+  el.innerHTML = list.map(c=>{
+    const past = c._date < today;
+    const wd = new Date(c._date+'T00:00:00+09:00').toLocaleDateString('ja-JP',{weekday:'short'});
+    const resp = c.responsible_id ? (resById(c.responsible_id)?.name||'') : '';
+    const kindBadge = c.cal_type==='lunar' ? `旧${c.lunar_month}/${c.lunar_day}` :
+                      c.cal_type==='solar_term' ? c.solar_term_name :
+                      c.cal_type==='one_shot' ? '単発' : '西暦';
+    return `<div class="res" onclick="openCal(${c.id})" style="${past?'opacity:.55':''}">
+      <div class="res-main">
+        <div class="res-name">
+          <span class="chip gold" style="margin-right:6px">${esc(c._date)}（${wd}）</span>
+          ${esc(c.name)}
+          <span class="chip gray" style="margin-left:6px">${esc(kindBadge)}</span>
+        </div>
+        <div class="res-sub">${esc(c.description||'')}${resp?`　担当: ${esc(resp)}`:''}${c.notes?`　${esc(c.notes)}`:''}</div>
+      </div>
+      <div class="muted">›</div>
+    </div>`;
+  }).join('');
+}
+function onCalTypeChange(){
+  const t = document.getElementById('c-type').value;
+  document.getElementById('c-lunar-wrap').style.display = t==='lunar'?'grid':'none';
+  document.getElementById('c-solar-wrap').style.display = t==='solar'?'grid':'none';
+  document.getElementById('c-term-wrap').style.display  = t==='solar_term'?'block':'none';
+  document.getElementById('c-oneshot-wrap').style.display = t==='one_shot'?'block':'none';
+}
+function openCal(id){
+  curCal = id ? CAL.find(c=>c.id===id) : null;
+  const c = curCal || {};
+  setv('c-name', c.name);
+  document.getElementById('c-type').value = c.cal_type || 'lunar';
+  setv('c-lmonth', c.lunar_month); setv('c-lday', c.lunar_day);
+  setv('c-smonth', c.solar_month); setv('c-sday', c.solar_day);
+  document.getElementById('c-term').value = c.solar_term_name || '清明';
+  setv('c-oneshot', c.one_shot_date);
+  setv('c-desc', c.description); setv('c-notes', c.notes);
+  const sel = document.getElementById('c-res');
+  sel.innerHTML = '<option value="">— 選択なし —</option>' + RES.map(r=>{
+    const h = HH.find(x=>x.id===r.household_id);
+    return `<option value="${r.id}">${esc(`${r.name||''}${h?`（${h.yagou||h.head_name||''}）`:''}`)}</option>`;
+  }).join('');
+  sel.value = c.responsible_id || '';
+  document.getElementById('c-active').checked = c.active!==false;
+  document.getElementById('delcal').style.display = curCal?'inline-block':'none';
+  onCalTypeChange();
+  openM('m-cal');
+}
+async function saveCal(){
+  const name = v('c-name'); if(!name){ toast('名前を入れてください'); return; }
+  const t = document.getElementById('c-type').value;
+  const p = { name, cal_type:t,
+    lunar_month: t==='lunar' ? (Number(v('c-lmonth'))||null) : null,
+    lunar_day:   t==='lunar' ? (Number(v('c-lday'))||null) : null,
+    solar_month: t==='solar' ? (Number(v('c-smonth'))||null) : null,
+    solar_day:   t==='solar' ? (Number(v('c-sday'))||null) : null,
+    solar_term_name: t==='solar_term' ? document.getElementById('c-term').value : null,
+    one_shot_date: t==='one_shot' ? normDate(v('c-oneshot')) : null,
+    description: v('c-desc')||null, notes: v('c-notes')||null,
+    responsible_id: document.getElementById('c-res').value ? Number(document.getElementById('c-res').value) : null,
+    active: document.getElementById('c-active').checked,
+    updated_at: new Date().toISOString()
+  };
+  const r = curCal
+    ? await sb.from('nerome_annual_events').update(p).eq('id',curCal.id)
+    : await sb.from('nerome_annual_events').insert(p);
+  if(r.error){ toast('保存エラー: '+r.error.message); return; }
+  closeM('m-cal'); await loadAll(); renderCal(); toast('保存しました');
+}
+async function delCal(){
+  if(!curCal) return;
+  if(!confirm(`「${curCal.name}」を削除します。よろしいですか？`)) return;
+  const { error } = await sb.from('nerome_annual_events').delete().eq('id',curCal.id);
+  if(error){ toast('削除エラー'); return; }
+  closeM('m-cal'); await loadAll(); renderCal(); toast('削除しました');
 }
 
 /* ===================== 起動 ===================== */
