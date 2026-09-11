@@ -315,10 +315,10 @@ main{padding:14px;max-width:900px;margin:0 auto}
     <button class="btn ghost sm" onclick="closeM('m-rel')">← 戻る</button>
     <div style="font-weight:700">関係を追加</div>
     <div class="spacer"></div>
-    <button class="btn sm" onclick="saveRel()">追加</button>
   </div>
   <div class="mbody">
     <div class="card">
+      <div class="muted" id="rel-target-name" style="margin-bottom:8px"></div>
       <div class="field"><label>関係</label>
         <input id="rel-kind" list="rellinklist" placeholder="兄弟 / 親子 / 夫婦 / 従兄弟 / 親戚 …">
         <datalist id="rellinklist">
@@ -329,14 +329,12 @@ main{padding:14px;max-width:900px;margin:0 auto}
           <option>親戚</option><option>婚姻</option><option>養子</option>
         </datalist>
       </div>
-      <div class="field"><label>相手（村内・村外どちらでも）</label>
-        <input id="rel-search" placeholder="名前・かな・屋号で検索" oninput="renderRelPicker()">
-        <div id="rel-picker" class="list" style="max-height:320px;overflow:auto;margin-top:6px"></div>
+      <div class="field"><label>メモ（任意）</label>
+        <input id="rel-detail" placeholder="例: 次男を養子縁組、実の親子など">
       </div>
-      <div class="muted" id="rel-picked">相手を選んでください</div>
-      <div class="field" style="margin-top:8px"><label>メモ（任意）</label>
-        <input id="rel-detail" placeholder="例: 兄が◯◯家、次男を養子縁組など">
-      </div>
+      <div class="sec" style="margin-top:6px">相手を選ぶと追加されます</div>
+      <input id="rel-search" placeholder="名前・かな・屋号で絞り込み" oninput="renderRelPicker()" style="margin-bottom:6px">
+      <div id="rel-picker" style="max-height:360px;overflow:auto"></div>
     </div>
   </div>
 </div>
@@ -757,12 +755,10 @@ function renderRelations(){
   }).join('');
 }
 
-let relPicked = null;
 function openRel(){
   if(!curRes){ toast('先に構成員を保存してください'); return; }
-  relPicked = null;
   setv('rel-kind',''); setv('rel-search',''); setv('rel-detail','');
-  document.getElementById('rel-picked').textContent = '相手を選んでください';
+  document.getElementById('rel-target-name').textContent = `${curRes.name} さんとの関係を追加`;
   renderRelPicker();
   openM('m-rel');
 }
@@ -774,24 +770,19 @@ function renderRelPicker(){
     if(!q) return true;
     const h = HH.find(x=>x.id===r.household_id);
     return (norm(r.name)+norm(r.kana)+norm(h?(h.yagou||''):'')+norm(r.address)).includes(q);
-  }).slice(0,50);
+  }).slice(0,100);
   const el = document.getElementById('rel-picker');
-  if(!list.length){ el.innerHTML='<div class="muted" style="padding:8px">該当なし。まだ登録がなければ、その人が属する世帯を開いて「構成員を追加」→「村外家族」で登録してください。</div>'; return; }
-  el.innerHTML = list.map(r=>`<div class="res" onclick="pickRel(${r.id})">
+  if(!list.length){ el.innerHTML='<div class="muted" style="padding:8px">該当なし。村外家族なら、対象の世帯を開いて「＋ 構成員を追加」→「村外家族」で先に登録してください。</div>'; return; }
+  el.innerHTML = list.map(r=>`<div class="res" onclick="pickAndSaveRel(${r.id})" style="cursor:pointer">
     <div class="res-main"><div class="res-name">${resLabel(r)}</div></div>
-    <div class="muted">選択</div>
+    <div class="muted">＋ 追加</div>
   </div>`).join('');
 }
-function pickRel(id){
-  relPicked = id;
-  const r = resById(id);
-  document.getElementById('rel-picked').innerHTML = `選択中: ${resLabel(r)}`;
-}
-async function saveRel(){
+async function pickAndSaveRel(id){
   if(!curRes){ toast('構成員が未選択'); return; }
-  if(!relPicked){ toast('相手を選んでください'); return; }
-  const kind = v('rel-kind'); if(!kind){ toast('関係を入力してください'); return; }
-  const p = { from_id: curRes.id, to_id: relPicked, kind, detail: v('rel-detail')||null };
+  const kind = v('rel-kind');
+  if(!kind){ toast('先に「関係」を入力してください（例: 親子）'); document.getElementById('rel-kind').focus(); return; }
+  const p = { from_id: curRes.id, to_id: id, kind, detail: v('rel-detail')||null };
   const { error } = await sb.from('nerome_relations').insert(p);
   if(error){ toast('追加エラー: '+error.message); return; }
   closeM('m-rel'); await loadAll(); renderRelations(); toast('追加しました');
