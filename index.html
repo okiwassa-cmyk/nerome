@@ -215,7 +215,7 @@ main{padding:14px;max-width:900px;margin:0 auto}
       <div class="grid2">
         <div class="field"><label>状態</label>
           <select id="f-status"><option>在住</option><option>転出</option><option>空き家</option></select></div>
-        <div class="field"><label>転入日</label><input id="f-in" type="date"></div>
+        <div class="field"><label>転入日</label><input id="f-in" type="text" inputmode="numeric" placeholder="YYYY-MM-DD（例 2001-04 / 2001）"></div>
       </div>
       <div class="field"><label>備考</label><textarea id="f-notes"></textarea></div>
     </div>
@@ -338,6 +338,16 @@ function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.
 function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function v(id){ return document.getElementById(id).value.trim(); }
 function setv(id,val){ document.getElementById(id).value = (val==null?'':val); }
+function normDate(s){
+  if(!s) return null;
+  s = String(s).trim().replace(/[年月]/g,'-').replace(/日/g,'').replace(/[./]/g,'-').replace(/-+$/,'');
+  const m = s.match(/^(\d{4})(?:-(\d{1,2}))?(?:-(\d{1,2}))?$/);
+  if(!m) return null;
+  const y=m[1], mo=(m[2]||'1').padStart(2,'0'), d=(m[3]||'1').padStart(2,'0');
+  const dt=new Date(`${y}-${mo}-${d}T00:00:00Z`);
+  if(isNaN(dt)) return null;
+  return `${y}-${mo}-${d}`;
+}
 function norm(s){ return (s||'').replace(/\s|　/g,'').toLowerCase(); }
 function yen(n){ return n==null||n===''?'':'¥'+Number(n).toLocaleString('ja-JP'); }
 
@@ -486,7 +496,7 @@ async function saveHH(){
   const p={ yagou:v('f-yagou')||null, head_name:v('f-head')||null, han:v('f-han')||null,
     phone:v('f-phone')||null, address:(v('f-addr')||'沖縄県国頭郡大宜味村字根路銘').trim(),
     status:document.getElementById('f-status').value,
-    moved_in:v('f-in')||null, notes:v('f-notes')||null,
+    moved_in:normDate(v('f-in')), notes:v('f-notes')||null,
     lat:pickLat, lng:pickLng, updated_at:new Date().toISOString() };
   if(!p.yagou && !p.head_name){ toast('屋号か世帯主名を入れてください'); return; }
   let r;
