@@ -515,8 +515,21 @@ function initPickMap(){
   const c = (pickLat!=null) ? [pickLat,pickLng] : CENTER;
   if(!pickMap){
     pickMap = L.map('pickmap').setView(c, pickLat!=null?18:16);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-      {maxZoom:19, attribution:'© OpenStreetMap'}).addTo(pickMap);
+    const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      {maxZoom:19, attribution:'© OpenStreetMap'});
+    const gsiStd = L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png',
+      {maxZoom:18, attribution:'地理院タイル'});
+    const gsiPale = L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png',
+      {maxZoom:18, attribution:'地理院タイル'});
+    const gsiPhoto = L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg',
+      {maxZoom:18, attribution:'地理院タイル（写真）'});
+    gsiStd.addTo(pickMap);
+    L.control.layers({
+      '地理院地図（建物・区画）': gsiStd,
+      '地理院地図（淡色）': gsiPale,
+      '航空写真': gsiPhoto,
+      'OpenStreetMap': osm,
+    }, null, {position:'topright', collapsed:true}).addTo(pickMap);
     pickMap.on('click', e=>{ setPin(e.latlng.lat, e.latlng.lng); });
   } else { pickMap.setView(c, pickLat!=null?18:16); }
   setTimeout(()=>pickMap.invalidateSize(),120);
