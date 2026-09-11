@@ -595,8 +595,21 @@ async function delRes(){
 function initMap(){
   if(!map){
     map = L.map('map').setView(CENTER,16);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-      {maxZoom:19, attribution:'© OpenStreetMap'}).addTo(map);
+    const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      {maxZoom:19, attribution:'© OpenStreetMap'});
+    const gsiStd = L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png',
+      {maxZoom:18, attribution:'地理院タイル'});
+    const gsiPale = L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png',
+      {maxZoom:18, attribution:'地理院タイル'});
+    const gsiPhoto = L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg',
+      {maxZoom:18, attribution:'地理院タイル（写真）'});
+    gsiStd.addTo(map);
+    L.control.layers({
+      '地理院地図（建物・区画）': gsiStd,
+      '地理院地図（淡色）': gsiPale,
+      '航空写真': gsiPhoto,
+      'OpenStreetMap': osm,
+    }, null, {position:'topright', collapsed:true}).addTo(map);
   }
   setTimeout(()=>map.invalidateSize(),120);
   markers.forEach(m=>map.removeLayer(m)); markers=[];
