@@ -265,7 +265,7 @@ main{padding:14px;max-width:900px;margin:0 auto}
             <option>三女</option><option>父</option><option>母</option><option>祖父</option>
             <option>祖母</option><option>孫</option><option>その他</option>
           </datalist></div>
-        <div class="field"><label>生年月日</label><input id="r-bd" type="date"></div>
+        <div class="field"><label>生年月日</label><input id="r-bd" type="text" inputmode="numeric" placeholder="YYYY-MM-DD（例 1948-03-21 / 1948）"></div>
         <div class="field"><label>性別</label>
           <select id="r-gender"><option value="">—</option><option>男</option><option>女</option></select></div>
         <div class="field"><label>電話</label><input id="r-phone" type="tel"></div>
@@ -300,7 +300,7 @@ main{padding:14px;max-width:900px;margin:0 auto}
       <div class="field"><label>世帯</label><select id="e-hh"></select></div>
       <div class="field"><label>対象者（任意）</label><select id="e-res"></select></div>
       <div class="grid2">
-        <div class="field"><label>日付</label><input id="e-date" type="date"></div>
+        <div class="field"><label>日付</label><input id="e-date" type="text" inputmode="numeric" placeholder="YYYY-MM-DD（例 2025-08-15）"></div>
         <div class="field"><label>金額（円）</label><input id="e-amount" type="number" inputmode="numeric"></div>
       </div>
       <div class="field"><label>件名</label><input id="e-title" placeholder="例: 数え61歳 還暦"></div>
@@ -592,7 +592,7 @@ function openRes(id){
 async function saveRes(){
   if(!curHH){ toast('世帯が未保存です'); return; }
   const p={ household_id:curHH.id, name:v('r-name')||null, kana:v('r-kana')||null,
-    relation:v('r-rel')||null, birth_date:v('r-bd')||null,
+    relation:v('r-rel')||null, birth_date:normDate(v('r-bd')),
     gender:document.getElementById('r-gender').value||null,
     phone:v('r-phone')||null, status:document.getElementById('r-status').value,
     notes:v('r-notes')||null, is_head:v('r-rel')==='世帯主',
@@ -745,7 +745,7 @@ async function saveEv(){
   const p={ event_type:document.getElementById('e-type').value,
     household_id:Number(document.getElementById('e-hh').value)||null,
     resident_id:Number(document.getElementById('e-res').value)||null,
-    event_date:v('e-date')||null,
+    event_date:normDate(v('e-date')),
     amount:v('e-amount')===''?null:Number(v('e-amount')),
     title:v('e-title')||null, notes:v('e-notes')||null };
   const r = curEv ? await sb.from('nerome_events').update(p).eq('id',curEv.id)
@@ -762,9 +762,10 @@ async function delEv(){
 }
 
 /* ===================== 起動 ===================== */
-document.getElementById('r-bd').addEventListener('change',function(){
-  const a=ageFull(this.value);
-  document.getElementById('r-age').textContent = this.value?`満${a}歳 / 数え${kazoeIn(this.value,new Date().getFullYear())}歳`:'';
+document.getElementById('r-bd').addEventListener('input',function(){
+  const d=normDate(this.value);
+  const a=ageFull(d);
+  document.getElementById('r-age').textContent = d?`満${a}歳 / 数え${kazoeIn(d,new Date().getFullYear())}歳`:'';
 });
 document.getElementById('li-pass').addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
 boot();
