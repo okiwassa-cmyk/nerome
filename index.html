@@ -211,7 +211,7 @@ main{padding:14px;max-width:900px;margin:0 auto}
         <div class="field"><label>班・組</label><input id="f-han" placeholder="例: 1班"></div>
         <div class="field"><label>電話</label><input id="f-phone" type="tel"></div>
       </div>
-      <div class="field"><label>住所（番地）</label><input id="f-addr" placeholder="大宜味村根路銘 ○○番地"></div>
+      <div class="field"><label>住所（番地）</label><input id="f-addr" placeholder="沖縄県国頭郡大宜味村字根路銘 ○○番地"></div>
       <div class="grid2">
         <div class="field"><label>状態</label>
           <select id="f-status"><option>在住</option><option>転出</option><option>空き家</option></select></div>
@@ -471,7 +471,7 @@ function openHH(id){
   const h = curHH || {};
   document.getElementById('hh-title').textContent = curHH ? (h.yagou||h.head_name||'世帯') : '新しい世帯';
   setv('f-yagou',h.yagou); setv('f-head',h.head_name); setv('f-han',h.han);
-  setv('f-phone',h.phone); setv('f-addr',h.address);
+  setv('f-phone',h.phone); setv('f-addr', h.address || '沖縄県国頭郡大宜味村字根路銘 ');
   document.getElementById('f-status').value = h.status||'在住';
   setv('f-in',h.moved_in); setv('f-notes',h.notes);
   pickLat = h.lat==null?null:h.lat; pickLng = h.lng==null?null:h.lng;
@@ -484,7 +484,7 @@ function openHH(id){
 }
 async function saveHH(){
   const p={ yagou:v('f-yagou')||null, head_name:v('f-head')||null, han:v('f-han')||null,
-    phone:v('f-phone')||null, address:v('f-addr')||null,
+    phone:v('f-phone')||null, address:(v('f-addr')||'沖縄県国頭郡大宜味村字根路銘').trim(),
     status:document.getElementById('f-status').value,
     moved_in:v('f-in')||null, notes:v('f-notes')||null,
     lat:pickLat, lng:pickLng, updated_at:new Date().toISOString() };
