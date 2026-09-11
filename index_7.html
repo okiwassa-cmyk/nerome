@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>根路銘区 名簿</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+:root{
+  --bg:#f4f5f3; --card:#ffffff; --line:#e2e4df; --text:#232622; --muted:#787d74;
+  --accent:#2f6b4f; --accent-soft:#e6f0ea; --warn:#b4502a; --warn-soft:#fbeee7;
+  --gold:#8a6d2f; --gold-soft:#f6efdd;
+}
+*{box-sizing:border-box;-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;
+  font-size:15px;line-height:1.6;-webkit-tap-highlight-color:transparent}
+input,select,textarea,button{font-family:inherit;font-size:16px}
+button{cursor:pointer}
+
+/* ---------- layout ---------- */
+header{position:sticky;top:0;z-index:500;background:var(--card);border-bottom:1px solid var(--line)}
+.hbar{display:flex;align-items:center;gap:10px;padding:10px 14px}
+.htitle{font-weight:700;font-size:17px;letter-spacing:.02em}
+.hsub{color:var(--muted);font-size:12px}
+.spacer{flex:1}
+.tabs{display:flex;gap:4px;padding:0 10px 8px;overflow-x:auto}
+.tab{flex:0 0 auto;padding:7px 15px;border-radius:999px;border:1px solid var(--line);
+  background:var(--card);color:var(--muted);font-size:14px;font-weight:600;white-space:nowrap}
+.tab.on{background:var(--accent);border-color:var(--accent);color:#fff}
+main{padding:14px;max-width:900px;margin:0 auto}
+.page{display:none}.page.on{display:block}
+
+/* ---------- bits ---------- */
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:10px}
+.row{display:flex;gap:8px;align-items:center}
+.wrap{flex-wrap:wrap}
+.btn{padding:9px 16px;border-radius:9px;border:1px solid var(--accent);
+  background:var(--accent);color:#fff;font-weight:600;font-size:15px}
+.btn.ghost{background:var(--card);color:var(--accent)}
+.btn.danger{background:var(--card);color:var(--warn);border-color:#e3c6ba}
+.btn.sm{padding:6px 12px;font-size:14px}
+.btn:disabled{opacity:.5}
+.field{margin-bottom:11px}
+.field label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:4px}
+.field input,.field select,.field textarea{width:100%;padding:10px;border:1px solid var(--line);
+  border-radius:8px;background:#fff;color:var(--text)}
+.field textarea{min-height:64px;resize:vertical}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
+.chip{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:600;
+  background:var(--accent-soft);color:var(--accent)}
+.chip.gray{background:#eceeea;color:var(--muted)}
+.chip.gold{background:var(--gold-soft);color:var(--gold)}
+.chip.warn{background:var(--warn-soft);color:var(--warn)}
+.muted{color:var(--muted);font-size:13px}
+.empty{text-align:center;color:var(--muted);padding:40px 10px;font-size:14px}
+.search{width:100%;padding:11px 14px;border:1px solid var(--line);border-radius:10px;background:#fff}
+.filters{display:flex;gap:6px;overflow-x:auto;padding:10px 0 2px}
+.fchip{flex:0 0 auto;padding:6px 13px;border-radius:999px;border:1px solid var(--line);
+  background:#fff;color:var(--muted);font-size:13px;font-weight:600;white-space:nowrap}
+.fchip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+
+/* ---------- household list ---------- */
+.hh{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:8px}
+.hh:active{background:#fafbf9}
+.hh-top{display:flex;align-items:baseline;gap:8px}
+.hh-yagou{font-weight:700;font-size:16px}
+.hh-head{font-size:14px;color:var(--muted)}
+.hh-meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center}
+.hh-members{margin-top:7px;font-size:13px;color:var(--muted);line-height:1.5}
+
+/* ---------- modal ---------- */
+.modal{position:fixed;inset:0;z-index:1000;background:var(--bg);overflow-y:auto;display:none;
+  -webkit-overflow-scrolling:touch}
+.modal.on{display:block}
+.mhead{position:sticky;top:0;background:var(--card);border-bottom:1px solid var(--line);
+  padding:10px 14px;display:flex;align-items:center;gap:10px;z-index:10}
+.mbody{padding:14px;max-width:900px;margin:0 auto}
+.sec{font-size:13px;font-weight:700;color:var(--muted);margin:18px 0 8px;
+  padding-bottom:5px;border-bottom:1px solid var(--line)}
+.sec:first-child{margin-top:0}
+
+/* ---------- resident row ---------- */
+.res{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--card);
+  border:1px solid var(--line);border-radius:10px;margin-bottom:6px}
+.res-main{flex:1;min-width:0}
+.res-name{font-weight:600}
+.res-sub{font-size:12px;color:var(--muted)}
+
+/* ---------- map ---------- */
+#map{height:62vh;min-height:360px;border-radius:12px;border:1px solid var(--line)}
+#pickmap{height:300px;border-radius:10px;border:1px solid var(--line);margin-bottom:8px}
+.leaflet-container{font-family:inherit}
+.pin-label{background:var(--accent);color:#fff;border-radius:6px;padding:2px 7px;
+  font-size:12px;font-weight:700;white-space:nowrap;border:2px solid #fff;
+  box-shadow:0 1px 4px rgba(0,0,0,.3)}
+
+/* ---------- login ---------- */
+#login{position:fixed;inset:0;z-index:2000;background:var(--bg);display:none;
+  align-items:center;justify-content:center;padding:20px}
+#login.on{display:flex}
+.loginbox{background:var(--card);border:1px solid var(--line);border-radius:14px;
+  padding:26px;width:100%;max-width:360px}
+
+/* ---------- toast ---------- */
+#toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);
+  background:#232622;color:#fff;padding:11px 20px;border-radius:999px;font-size:14px;
+  z-index:3000;opacity:0;transition:.25s;pointer-events:none;max-width:90vw;text-align:center}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<!-- ===== ログイン ===== -->
+<div id="login">
+  <div class="loginbox">
+    <div style="font-weight:700;font-size:18px;margin-bottom:4px">根路銘区 名簿</div>
+    <div class="muted" style="margin-bottom:18px">区民の個人情報のため、ログインが必要です</div>
+    <div class="field"><label>メールアドレス</label>
+      <input type="email" id="li-email" autocomplete="username" value="oki.wassa@gmail.com"></div>
+    <div class="field"><label>パスワード</label>
+      <input type="password" id="li-pass" autocomplete="current-password"></div>
+    <button class="btn" style="width:100%;margin-top:6px" onclick="doLogin()">ログイン</button>
+    <button class="btn ghost" style="width:100%;margin-top:8px;border-color:var(--line);color:var(--muted)"
+      onclick="doReset()">パスワードを忘れた（メールで再設定）</button>
+    <div id="li-msg" class="muted" style="margin-top:12px;color:var(--warn)"></div>
+  </div>
+</div>
+
+<!-- ===== 本体 ===== -->
+<div id="app" style="display:none">
+<header>
+  <div class="hbar">
+    <div>
+      <div class="htitle">根路銘区 名簿</div>
+      <div class="hsub" id="stat">読み込み中…</div>
+    </div>
+    <div class="spacer"></div>
+    <button class="btn ghost sm" onclick="changePw()">パスワード変更</button>
+    <button class="btn ghost sm" onclick="doLogout()">ログアウト</button>
+  </div>
+  <div class="tabs">
+    <button class="tab on" data-p="p-hh"  onclick="go('p-hh',this)">世帯</button>
+    <button class="tab"    data-p="p-map" onclick="go('p-map',this)">地図</button>
+    <button class="tab"    data-p="p-toshi" onclick="go('p-toshi',this)">年祝い</button>
+    <button class="tab"    data-p="p-ev"  onclick="go('p-ev',this)">記録</button>
+  </div>
+</header>
+
+<main>
+  <!-- ---- 世帯 ---- -->
+  <div id="p-hh" class="page on">
+    <input class="search" id="q" placeholder="屋号・世帯主・住民名・かなで検索" oninput="renderHH()">
+    <div class="filters" id="hanfilter"></div>
+    <div class="row" style="margin:10px 0">
+      <button class="btn" onclick="openHH(null)">＋ 新しい世帯</button>
+      <div class="spacer"></div>
+      <label class="muted" style="display:flex;align-items:center;gap:5px">
+        <input type="checkbox" id="showout" onchange="renderHH()" style="width:auto">転出・空き家も表示
+      </label>
+    </div>
+    <div id="hhlist"></div>
+  </div>
+
+  <!-- ---- 地図 ---- -->
+  <div id="p-map" class="page">
+    <div class="muted" id="mapnote" style="margin-bottom:8px"></div>
+    <div id="map"></div>
+    <div class="muted" style="margin-top:8px">ピンをタップすると世帯の詳細が開きます。位置の登録は各世帯の詳細画面から。</div>
+  </div>
+
+  <!-- ---- 年祝い ---- -->
+  <div id="p-toshi" class="page">
+    <div class="row" style="margin-bottom:12px">
+      <button class="btn ghost sm" onclick="shiftYear(-1)">◀ 前の年</button>
+      <div style="font-weight:700;font-size:17px" id="tyear"></div>
+      <button class="btn ghost sm" onclick="shiftYear(1)">次の年 ▶</button>
+    </div>
+    <div class="sec">生年祝い（トゥシビー）該当者　※数え年</div>
+    <div id="toshilist"></div>
+    <div class="sec">今月が誕生日の方</div>
+    <div id="bdlist"></div>
+  </div>
+
+  <!-- ---- 記録 ---- -->
+  <div id="p-ev" class="page">
+    <div class="row" style="margin-bottom:10px">
+      <button class="btn" onclick="openEv(null,null,null)">＋ 記録を追加</button>
+    </div>
+    <div class="filters" id="evfilter"></div>
+    <div id="evtotal" class="muted" style="margin:8px 0"></div>
+    <div id="evlist"></div>
+  </div>
+</main>
+</div>
+
+<!-- ===== 世帯モーダル ===== -->
+<div class="modal" id="m-hh">
+  <div class="mhead">
+    <button class="btn ghost sm" onclick="closeM('m-hh')">← 戻る</button>
+    <div style="font-weight:700" id="hh-title">世帯</div>
+    <div class="spacer"></div>
+    <button class="btn sm" onclick="saveHH()">保存</button>
+  </div>
+  <div class="mbody">
+    <div class="sec">世帯の情報</div>
+    <div class="card">
+      <div class="grid2">
+        <div class="field"><label>屋号</label><input id="f-yagou"></div>
+        <div class="field"><label>世帯主名</label><input id="f-head"></div>
+        <div class="field"><label>班・組</label><input id="f-han" placeholder="例: 1班"></div>
+        <div class="field"><label>電話</label><input id="f-phone" type="tel"></div>
+      </div>
+      <div class="field"><label>住所（番地）</label><input id="f-addr" placeholder="大宜味村根路銘 ○○番地"></div>
+      <div class="grid2">
+        <div class="field"><label>状態</label>
+          <select id="f-status"><option>在住</option><option>転出</option><option>空き家</option></select></div>
+        <div class="field"><label>転入日</label><input id="f-in" type="date"></div>
+      </div>
+      <div class="field"><label>備考</label><textarea id="f-notes"></textarea></div>
+    </div>
+
+    <div class="sec">地図上の位置</div>
+    <div class="card">
+      <div id="pickmap"></div>
+      <div class="row wrap">
+        <div class="muted" id="latlng" style="flex:1"></div>
+        <button class="btn ghost sm" onclick="clearPin()">位置を消す</button>
+      </div>
+      <div class="muted" style="margin-top:6px">地図をタップすると、その場所にこの世帯のピンが立ちます。</div>
+    </div>
+
+    <div class="sec">世帯の構成員</div>
+    <div id="reslist"></div>
+    <button class="btn ghost sm" id="addres" onclick="openRes(null)">＋ 構成員を追加</button>
+
+    <div class="sec">この世帯のお祝い・見舞い記録</div>
+    <div id="hhev"></div>
+    <button class="btn ghost sm" id="addev" onclick="openEv(null,curHH&&curHH.id,null)">＋ 記録を追加</button>
+
+    <div style="margin-top:34px;padding-top:16px;border-top:1px solid var(--line)">
+      <button class="btn danger sm" id="delhh" onclick="delHH()">この世帯を削除</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 構成員モーダル ===== -->
+<div class="modal" id="m-res">
+  <div class="mhead">
+    <button class="btn ghost sm" onclick="closeM('m-res')">← 戻る</button>
+    <div style="font-weight:700">構成員</div>
+    <div class="spacer"></div>
+    <button class="btn sm" onclick="saveRes()">保存</button>
+  </div>
+  <div class="mbody">
+    <div class="card">
+      <div class="grid2">
+        <div class="field"><label>氏名</label><input id="r-name"></div>
+        <div class="field"><label>ふりがな</label><input id="r-kana"></div>
+        <div class="field"><label>続柄</label>
+          <input id="r-rel" list="rellist" placeholder="世帯主 / 妻 / 長男 …">
+          <datalist id="rellist">
+            <option>世帯主</option><option>妻</option><option>夫</option><option>長男</option>
+            <option>次男</option><option>三男</option><option>長女</option><option>次女</option>
+            <option>三女</option><option>父</option><option>母</option><option>祖父</option>
+            <option>祖母</option><option>孫</option><option>その他</option>
+          </datalist></div>
+        <div class="field"><label>生年月日</label><input id="r-bd" type="date"></div>
+        <div class="field"><label>性別</label>
+          <select id="r-gender"><option value="">—</option><option>男</option><option>女</option></select></div>
+        <div class="field"><label>電話</label><input id="r-phone" type="tel"></div>
+        <div class="field"><label>状態</label>
+          <select id="r-status"><option>在住</option><option>転出</option><option>死亡</option></select></div>
+      </div>
+      <div class="field"><label>備考</label><textarea id="r-notes"></textarea></div>
+      <div class="muted" id="r-age"></div>
+    </div>
+    <div style="margin-top:30px;padding-top:16px;border-top:1px solid var(--line)">
+      <button class="btn danger sm" id="delres" onclick="delRes()">この構成員を削除</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 記録モーダル ===== -->
+<div class="modal" id="m-ev">
+  <div class="mhead">
+    <button class="btn ghost sm" onclick="closeM('m-ev')">← 戻る</button>
+    <div style="font-weight:700">お祝い・見舞い</div>
+    <div class="spacer"></div>
+    <button class="btn sm" onclick="saveEv()">保存</button>
+  </div>
+  <div class="mbody">
+    <div class="card">
+      <div class="field"><label>種別</label>
+        <select id="e-type">
+          <option>生年祝い</option><option>出産祝い</option><option>入学祝い</option>
+          <option>卒業祝い</option><option>結婚祝い</option><option>新築祝い</option>
+          <option>お見舞い</option><option>香典</option><option>その他</option>
+        </select></div>
+      <div class="field"><label>世帯</label><select id="e-hh"></select></div>
+      <div class="field"><label>対象者（任意）</label><select id="e-res"></select></div>
+      <div class="grid2">
+        <div class="field"><label>日付</label><input id="e-date" type="date"></div>
+        <div class="field"><label>金額（円）</label><input id="e-amount" type="number" inputmode="numeric"></div>
+      </div>
+      <div class="field"><label>件名</label><input id="e-title" placeholder="例: 数え61歳 還暦"></div>
+      <div class="field"><label>備考</label><textarea id="e-notes"></textarea></div>
+    </div>
+    <div style="margin-top:30px;padding-top:16px;border-top:1px solid var(--line)">
+      <button class="btn danger sm" id="delev" onclick="delEv()">この記録を削除</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+/* ===================== 設定 ===================== */
+const SB_URL = 'https://mtsdhheqddrckksiqlim.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im10c2RoaGVxZGRyY2trc2lxbGltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1OTc5NDgsImV4cCI6MjA4ODE3Mzk0OH0.c18ExSxNHBOani7CN4QAqaerhvpr5ZCYA0GGkUg0mlc';
+const CENTER = [26.6825, 128.1185];   // 根路銘あたり
+const sb = window.supabase.createClient(SB_URL, SB_KEY, {
+  auth:{ persistSession:true, autoRefreshToken:true, storage:window.localStorage }
+});
+
+/* ===================== 状態 ===================== */
+let HH = [], RES = [], EV = [];
+let curHH = null, curRes = null, curEv = null;
+let hanSel = '', evSel = '', tYear = new Date().getFullYear();
+let map = null, pickMap = null, pickMarker = null, pickLat = null, pickLng = null;
+let markers = [];
+
+/* ===================== 共通 ===================== */
+function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('on');
+  clearTimeout(t._x); t._x=setTimeout(()=>t.classList.remove('on'),2200); }
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function v(id){ return document.getElementById(id).value.trim(); }
+function setv(id,val){ document.getElementById(id).value = (val==null?'':val); }
+function norm(s){ return (s||'').replace(/\s|　/g,'').toLowerCase(); }
+function yen(n){ return n==null||n===''?'':'¥'+Number(n).toLocaleString('ja-JP'); }
+
+function go(p,el){
+  document.querySelectorAll('.page').forEach(x=>x.classList.remove('on'));
+  document.getElementById(p).classList.add('on');
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+  if(el) el.classList.add('on');
+  if(p==='p-map') setTimeout(initMap,60);
+  if(p==='p-toshi') renderToshi();
+  if(p==='p-ev') renderEv();
+}
+function openM(id){ document.getElementById(id).classList.add('on'); window.scrollTo(0,0); }
+function closeM(id){ document.getElementById(id).classList.remove('on'); }
+
+/* ===================== 年齢 ===================== */
+function ageFull(bd){
+  if(!bd) return null;
+  const b=new Date(bd+'T00:00:00'), n=new Date();
+  let a=n.getFullYear()-b.getFullYear();
+  const m=n.getMonth()-b.getMonth();
+  if(m<0||(m===0&&n.getDate()<b.getDate())) a--;
+  return a;
+}
+function kazoeIn(bd, year){            // その年の数え年
+  if(!bd) return null;
+  return year - Number(bd.slice(0,4)) + 1;
+}
+const TOSHIBI = {
+  13:'十三祝い', 25:'二十五歳', 37:'三十七歳', 49:'四十九歳',
+  61:'還暦（カンレキ）', 73:'生年祝い（数え73）', 85:'ダートゥーイ',
+  88:'トーカチ（米寿）', 97:'カジマヤー'
+};
+
+/* ===================== 認証 ===================== */
+async function boot(){
+  const { data } = await sb.auth.getSession();
+  if(data.session) showApp(); else document.getElementById('login').classList.add('on');
+}
+async function doLogin(){
+  const msg=document.getElementById('li-msg'); msg.textContent='';
+  const { error } = await sb.auth.signInWithPassword({ email:v('li-email'), password:v('li-pass') });
+  if(error){ msg.textContent='ログインできませんでした：'+error.message; return; }
+  document.getElementById('login').classList.remove('on');
+  showApp();
+}
+async function doReset(){
+  const msg=document.getElementById('li-msg');
+  const { error } = await sb.auth.resetPasswordForEmail(v('li-email'));
+  msg.style.color = error ? 'var(--warn)' : 'var(--accent)';
+  msg.textContent = error ? error.message : '再設定用のメールを送りました。メールを確認してください。';
+}
+async function doLogout(){ await sb.auth.signOut(); location.reload(); }
+async function changePw(){
+  const p1 = prompt('新しいパスワードを入力してください（8文字以上）');
+  if(!p1) return;
+  if(p1.length < 8){ toast('8文字以上にしてください'); return; }
+  const p2 = prompt('確認のため、もう一度入力してください');
+  if(p1 !== p2){ toast('一致しませんでした'); return; }
+  const { error } = await sb.auth.updateUser({ password:p1 });
+  toast(error ? ('変更できませんでした: '+error.message) : 'パスワードを変更しました');
+}
+async function showApp(){
+  document.getElementById('app').style.display='block';
+  await loadAll();
+}
+
+/* ===================== 読み込み ===================== */
+async function loadAll(){
+  const [a,b,c] = await Promise.all([
+    sb.from('nerome_households').select('*').order('han').order('yagou'),
+    sb.from('nerome_residents').select('*').order('sort_order').order('id'),
+    sb.from('nerome_events').select('*').order('event_date',{ascending:false})
+  ]);
+  if(a.error||b.error||c.error){ toast('読み込みエラー'); console.error(a.error,b.error,c.error); return; }
+  HH=a.data||[]; RES=b.data||[]; EV=c.data||[];
+  const live = HH.filter(h=>h.status==='在住').length;
+  const people = RES.filter(r=>r.status==='在住').length;
+  document.getElementById('stat').textContent = `${live}世帯 / ${people}人`;
+  renderHanFilter(); renderHH(); renderEvFilter();
+  if(document.getElementById('p-map').classList.contains('on')) initMap();
+}
+function membersOf(id){ return RES.filter(r=>r.household_id===id); }
+
+/* ===================== 世帯一覧 ===================== */
+function renderHanFilter(){
+  const hans=[...new Set(HH.map(h=>h.han).filter(Boolean))].sort();
+  const el=document.getElementById('hanfilter');
+  el.innerHTML = [`<button class="fchip ${hanSel===''?'on':''}" onclick="setHan('')">すべて</button>`]
+    .concat(hans.map(h=>`<button class="fchip ${hanSel===h?'on':''}" onclick="setHan('${esc(h)}')">${esc(h)}</button>`)).join('');
+}
+function setHan(h){ hanSel=h; renderHanFilter(); renderHH(); }
+
+function renderHH(){
+  const q=norm(document.getElementById('q').value);
+  const showOut=document.getElementById('showout').checked;
+  let list=HH.filter(h=>{
+    if(!showOut && h.status!=='在住') return false;
+    if(hanSel && h.han!==hanSel) return false;
+    if(!q) return true;
+    const mem=membersOf(h.id).map(r=>norm(r.name)+norm(r.kana)).join('');
+    return (norm(h.yagou)+norm(h.head_name)+norm(h.address)+mem).includes(q);
+  });
+  const el=document.getElementById('hhlist');
+  if(!list.length){ el.innerHTML='<div class="empty">該当する世帯がありません</div>'; return; }
+  el.innerHTML=list.map(h=>{
+    const mem=membersOf(h.id).filter(r=>r.status==='在住');
+    return `<div class="hh" onclick="openHH(${h.id})">
+      <div class="hh-top">
+        <div class="hh-yagou">${esc(h.yagou||'（屋号なし）')}</div>
+        <div class="hh-head">${esc(h.head_name||'')}</div>
+      </div>
+      <div class="hh-meta">
+        ${h.han?`<span class="chip">${esc(h.han)}</span>`:''}
+        <span class="chip gray">${mem.length}人</span>
+        ${h.status!=='在住'?`<span class="chip warn">${esc(h.status)}</span>`:''}
+        ${(h.lat==null)?'<span class="chip gray">位置未登録</span>':''}
+        ${h.address?`<span class="muted">${esc(h.address)}</span>`:''}
+      </div>
+      ${mem.length?`<div class="hh-members">${mem.map(r=>{
+          const a=ageFull(r.birth_date);
+          return esc(r.name)+(r.relation?`<span style="opacity:.65">(${esc(r.relation)})</span>`:'')+(a!=null?` ${a}`:'');
+        }).join('　')}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+/* ===================== 世帯モーダル ===================== */
+function openHH(id){
+  curHH = id ? HH.find(h=>h.id===id) : null;
+  const h = curHH || {};
+  document.getElementById('hh-title').textContent = curHH ? (h.yagou||h.head_name||'世帯') : '新しい世帯';
+  setv('f-yagou',h.yagou); setv('f-head',h.head_name); setv('f-han',h.han);
+  setv('f-phone',h.phone); setv('f-addr',h.address);
+  document.getElementById('f-status').value = h.status||'在住';
+  setv('f-in',h.moved_in); setv('f-notes',h.notes);
+  pickLat = h.lat==null?null:h.lat; pickLng = h.lng==null?null:h.lng;
+  document.getElementById('delhh').style.display = curHH?'inline-block':'none';
+  document.getElementById('addres').style.display = curHH?'inline-block':'none';
+  document.getElementById('addev').style.display  = curHH?'inline-block':'none';
+  renderRes(); renderHHEv();
+  openM('m-hh');
+  setTimeout(initPickMap,80);
+}
+async function saveHH(){
+  const p={ yagou:v('f-yagou')||null, head_name:v('f-head')||null, han:v('f-han')||null,
+    phone:v('f-phone')||null, address:v('f-addr')||null,
+    status:document.getElementById('f-status').value,
+    moved_in:v('f-in')||null, notes:v('f-notes')||null,
+    lat:pickLat, lng:pickLng, updated_at:new Date().toISOString() };
+  if(!p.yagou && !p.head_name){ toast('屋号か世帯主名を入れてください'); return; }
+  let r;
+  if(curHH) r = await sb.from('nerome_households').update(p).eq('id',curHH.id).select().single();
+  else      r = await sb.from('nerome_households').insert(p).select().single();
+  if(r.error){ toast('保存エラー: '+r.error.message); return; }
+  await loadAll();
+  curHH = HH.find(h=>h.id===r.data.id);
+  document.getElementById('hh-title').textContent = curHH.yagou||curHH.head_name||'世帯';
+  document.getElementById('delhh').style.display='inline-block';
+  document.getElementById('addres').style.display='inline-block';
+  document.getElementById('addev').style.display='inline-block';
+  renderRes(); renderHHEv();
+  toast('保存しました');
+}
+async function delHH(){
+  if(!curHH) return;
+  if(!confirm('この世帯と構成員・記録をすべて削除します。よろしいですか？')) return;
+  const { error } = await sb.from('nerome_households').delete().eq('id',curHH.id);
+  if(error){ toast('削除エラー'); return; }
+  closeM('m-hh'); await loadAll(); toast('削除しました');
+}
+
+/* ---- 位置ピック ---- */
+function initPickMap(){
+  const c = (pickLat!=null) ? [pickLat,pickLng] : CENTER;
+  if(!pickMap){
+    pickMap = L.map('pickmap').setView(c, pickLat!=null?18:16);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      {maxZoom:19, attribution:'© OpenStreetMap'}).addTo(pickMap);
+    pickMap.on('click', e=>{ setPin(e.latlng.lat, e.latlng.lng); });
+  } else { pickMap.setView(c, pickLat!=null?18:16); }
+  setTimeout(()=>pickMap.invalidateSize(),120);
+  drawPin();
+}
+function setPin(lat,lng){ pickLat=+lat.toFixed(7); pickLng=+lng.toFixed(7); drawPin(); }
+function drawPin(){
+  if(pickMarker){ pickMap.removeLayer(pickMarker); pickMarker=null; }
+  const el=document.getElementById('latlng');
+  if(pickLat==null){ el.textContent='位置は未登録です'; return; }
+  pickMarker = L.marker([pickLat,pickLng],{draggable:true}).addTo(pickMap);
+  pickMarker.on('dragend', e=>{ const p=e.target.getLatLng(); setPin(p.lat,p.lng); });
+  el.textContent = `緯度 ${pickLat} / 経度 ${pickLng}（保存ボタンで確定）`;
+}
+function clearPin(){ pickLat=null; pickLng=null; drawPin(); }
+
+/* ===================== 構成員 ===================== */
+function renderRes(){
+  const el=document.getElementById('reslist');
+  if(!curHH){ el.innerHTML='<div class="muted">先に世帯を保存すると構成員を追加できます。</div>'; return; }
+  const list=membersOf(curHH.id);
+  if(!list.length){ el.innerHTML='<div class="muted">まだ構成員が登録されていません。</div>'; return; }
+  el.innerHTML=list.map(r=>{
+    const a=ageFull(r.birth_date), k=kazoeIn(r.birth_date,tYear);
+    return `<div class="res" onclick="openRes(${r.id})">
+      <div class="res-main">
+        <div class="res-name">${esc(r.name||'')}
+          ${r.relation?`<span class="chip gray" style="margin-left:6px">${esc(r.relation)}</span>`:''}
+          ${r.status!=='在住'?`<span class="chip warn" style="margin-left:4px">${esc(r.status)}</span>`:''}</div>
+        <div class="res-sub">${esc(r.kana||'')}
+          ${r.birth_date?`　${esc(r.birth_date)}　満${a}歳 / 数え${k}`:''}
+          ${r.phone?`　${esc(r.phone)}`:''}</div>
+      </div>
+      <div class="muted">›</div>
+    </div>`;
+  }).join('');
+}
+function openRes(id){
+  curRes = id ? RES.find(r=>r.id===id) : null;
+  const r = curRes || {};
+  setv('r-name',r.name); setv('r-kana',r.kana); setv('r-rel',r.relation);
+  setv('r-bd',r.birth_date); setv('r-phone',r.phone); setv('r-notes',r.notes);
+  document.getElementById('r-gender').value=r.gender||'';
+  document.getElementById('r-status').value=r.status||'在住';
+  document.getElementById('delres').style.display = curRes?'inline-block':'none';
+  const a=ageFull(r.birth_date);
+  document.getElementById('r-age').textContent = r.birth_date?`満${a}歳 / 数え${kazoeIn(r.birth_date,new Date().getFullYear())}歳`:'';
+  openM('m-res');
+}
+async function saveRes(){
+  if(!curHH){ toast('世帯が未保存です'); return; }
+  const p={ household_id:curHH.id, name:v('r-name')||null, kana:v('r-kana')||null,
+    relation:v('r-rel')||null, birth_date:v('r-bd')||null,
+    gender:document.getElementById('r-gender').value||null,
+    phone:v('r-phone')||null, status:document.getElementById('r-status').value,
+    notes:v('r-notes')||null, is_head:v('r-rel')==='世帯主',
+    updated_at:new Date().toISOString() };
+  if(!p.name){ toast('氏名を入れてください'); return; }
+  const r = curRes
+    ? await sb.from('nerome_residents').update(p).eq('id',curRes.id)
+    : await sb.from('nerome_residents').insert(p);
+  if(r.error){ toast('保存エラー: '+r.error.message); return; }
+  closeM('m-res'); await loadAll();
+  curHH = HH.find(h=>h.id===curHH.id); renderRes();
+  toast('保存しました');
+}
+async function delRes(){
+  if(!curRes) return;
+  if(!confirm('この構成員を削除します。よろしいですか？')) return;
+  const { error } = await sb.from('nerome_residents').delete().eq('id',curRes.id);
+  if(error){ toast('削除エラー'); return; }
+  closeM('m-res'); await loadAll(); renderRes(); toast('削除しました');
+}
+
+/* ===================== 地図 ===================== */
+function initMap(){
+  if(!map){
+    map = L.map('map').setView(CENTER,16);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      {maxZoom:19, attribution:'© OpenStreetMap'}).addTo(map);
+  }
+  setTimeout(()=>map.invalidateSize(),120);
+  markers.forEach(m=>map.removeLayer(m)); markers=[];
+  const pts=HH.filter(h=>h.lat!=null&&h.lng!=null);
+  pts.forEach(h=>{
+    const label=esc(h.yagou||h.head_name||'');
+    const icon=L.divIcon({className:'', html:`<div class="pin-label">${label}</div>`, iconSize:null});
+    const m=L.marker([h.lat,h.lng],{icon}).addTo(map);
+    const mem=membersOf(h.id).filter(r=>r.status==='在住').length;
+    m.bindPopup(`<b>${label}</b><br>${esc(h.head_name||'')}<br>${mem}人<br>
+      <a href="javascript:void(0)" onclick="openHH(${h.id})">詳細を開く</a>`);
+    markers.push(m);
+  });
+  if(pts.length) map.fitBounds(L.latLngBounds(pts.map(h=>[h.lat,h.lng])).pad(0.25));
+  const no=HH.filter(h=>h.status==='在住'&&h.lat==null).length;
+  document.getElementById('mapnote').textContent =
+    `${pts.length}世帯を表示中` + (no?`　／　位置未登録 ${no}世帯`:'');
+}
+
+/* ===================== 年祝い ===================== */
+function shiftYear(d){ tYear+=d; renderToshi(); }
+function renderToshi(){
+  document.getElementById('tyear').textContent = `${tYear}年`;
+  const hit=[];
+  RES.filter(r=>r.status==='在住'&&r.birth_date).forEach(r=>{
+    const k=kazoeIn(r.birth_date,tYear);
+    if(TOSHIBI[k]) hit.push({r,k});
+  });
+  hit.sort((a,b)=>b.k-a.k);
+  const el=document.getElementById('toshilist');
+  el.innerHTML = hit.length ? hit.map(({r,k})=>{
+    const h=HH.find(x=>x.id===r.household_id)||{};
+    return `<div class="res" onclick="openHH(${r.household_id})">
+      <div class="res-main">
+        <div class="res-name">${esc(r.name)} <span class="chip gold" style="margin-left:6px">数え${k} ${TOSHIBI[k]}</span></div>
+        <div class="res-sub">${esc(h.yagou||h.head_name||'')}　${esc(r.birth_date)}生</div>
+      </div><div class="muted">›</div></div>`;
+  }).join('') + '<div class="muted" style="margin-top:8px">※沖縄では旧正月にまとめてお祝いすることが多いので、年明け前に確認しておくと安心です。</div>'
+  : '<div class="empty">該当者はいません</div>';
+
+  const m=new Date().getMonth()+1;
+  const bd=RES.filter(r=>r.status==='在住'&&r.birth_date&&Number(r.birth_date.slice(5,7))===m)
+    .sort((a,b)=>a.birth_date.slice(8)-b.birth_date.slice(8));
+  document.getElementById('bdlist').innerHTML = bd.length ? bd.map(r=>{
+    const h=HH.find(x=>x.id===r.household_id)||{};
+    return `<div class="res" onclick="openHH(${r.household_id})">
+      <div class="res-main"><div class="res-name">${esc(r.name)}</div>
+      <div class="res-sub">${Number(r.birth_date.slice(5,7))}月${Number(r.birth_date.slice(8))}日　満${ageFull(r.birth_date)}歳　${esc(h.yagou||'')}</div></div>
+      <div class="muted">›</div></div>`;
+  }).join('') : '<div class="empty">今月の誕生日はありません</div>';
+}
+
+/* ===================== 記録 ===================== */
+function renderEvFilter(){
+  const types=[...new Set(EV.map(e=>e.event_type).filter(Boolean))];
+  document.getElementById('evfilter').innerHTML =
+    [`<button class="fchip ${evSel===''?'on':''}" onclick="setEvF('')">すべて</button>`]
+    .concat(types.map(t=>`<button class="fchip ${evSel===t?'on':''}" onclick="setEvF('${esc(t)}')">${esc(t)}</button>`)).join('');
+}
+function setEvF(t){ evSel=t; renderEvFilter(); renderEv(); }
+function renderEv(){
+  let list = evSel ? EV.filter(e=>e.event_type===evSel) : EV;
+  const sum = list.reduce((s,e)=>s+(Number(e.amount)||0),0);
+  document.getElementById('evtotal').textContent = `${list.length}件　合計 ${yen(sum)||'¥0'}`;
+  document.getElementById('evlist').innerHTML = list.length ? list.map(e=>evRow(e,true)).join('')
+    : '<div class="empty">記録がありません</div>';
+}
+function renderHHEv(){
+  const el=document.getElementById('hhev');
+  if(!curHH){ el.innerHTML='<div class="muted">世帯を保存すると記録を追加できます。</div>'; return; }
+  const list=EV.filter(e=>e.household_id===curHH.id);
+  el.innerHTML = list.length ? list.map(e=>evRow(e,false)).join('') : '<div class="muted">記録はまだありません。</div>';
+}
+function evRow(e,showHH){
+  const h=HH.find(x=>x.id===e.household_id)||{};
+  const r=RES.find(x=>x.id===e.resident_id);
+  return `<div class="res" onclick="openEv(${e.id},null,null)">
+    <div class="res-main">
+      <div class="res-name"><span class="chip">${esc(e.event_type||'')}</span>
+        <span style="margin-left:7px">${esc(e.title||'')}</span></div>
+      <div class="res-sub">${esc(e.event_date||'')}
+        ${showHH&&h.id?`　${esc(h.yagou||h.head_name||'')}`:''}
+        ${r?`　${esc(r.name)}`:''}
+        ${e.amount?`　<b>${yen(e.amount)}</b>`:''}</div>
+    </div><div class="muted">›</div></div>`;
+}
+function openEv(id, hhId, resId){
+  curEv = id ? EV.find(e=>e.id===id) : null;
+  const e = curEv || {};
+  document.getElementById('e-type').value = e.event_type||'生年祝い';
+  const hsel=document.getElementById('e-hh');
+  hsel.innerHTML = '<option value="">—</option>' + HH.map(h=>
+    `<option value="${h.id}">${esc(h.yagou||h.head_name||'')}</option>`).join('');
+  hsel.value = e.household_id || hhId || '';
+  hsel.onchange = fillResSel;
+  fillResSel();
+  document.getElementById('e-res').value = e.resident_id || resId || '';
+  setv('e-date', e.event_date || new Date().toISOString().slice(0,10));
+  setv('e-amount', e.amount); setv('e-title', e.title); setv('e-notes', e.notes);
+  document.getElementById('delev').style.display = curEv?'inline-block':'none';
+  openM('m-ev');
+}
+function fillResSel(){
+  const hid=Number(document.getElementById('e-hh').value)||null;
+  const list=hid?membersOf(hid):[];
+  document.getElementById('e-res').innerHTML = '<option value="">—</option>' +
+    list.map(r=>`<option value="${r.id}">${esc(r.name)}</option>`).join('');
+}
+async function saveEv(){
+  const p={ event_type:document.getElementById('e-type').value,
+    household_id:Number(document.getElementById('e-hh').value)||null,
+    resident_id:Number(document.getElementById('e-res').value)||null,
+    event_date:v('e-date')||null,
+    amount:v('e-amount')===''?null:Number(v('e-amount')),
+    title:v('e-title')||null, notes:v('e-notes')||null };
+  const r = curEv ? await sb.from('nerome_events').update(p).eq('id',curEv.id)
+                  : await sb.from('nerome_events').insert(p);
+  if(r.error){ toast('保存エラー: '+r.error.message); return; }
+  closeM('m-ev'); await loadAll(); renderEv(); renderHHEv(); toast('保存しました');
+}
+async function delEv(){
+  if(!curEv) return;
+  if(!confirm('この記録を削除します。よろしいですか？')) return;
+  const { error } = await sb.from('nerome_events').delete().eq('id',curEv.id);
+  if(error){ toast('削除エラー'); return; }
+  closeM('m-ev'); await loadAll(); renderEv(); renderHHEv(); toast('削除しました');
+}
+
+/* ===================== 起動 ===================== */
+document.getElementById('r-bd').addEventListener('change',function(){
+  const a=ageFull(this.value);
+  document.getElementById('r-age').textContent = this.value?`満${a}歳 / 数え${kazoeIn(this.value,new Date().getFullYear())}歳`:'';
+});
+document.getElementById('li-pass').addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
+boot();
+</script>
+</body>
+</html>
