@@ -568,8 +568,19 @@ async function saveHH(){
   if(curHH) r = await sb.from('nerome_households').update(p).eq('id',curHH.id).select().single();
   else      r = await sb.from('nerome_households').insert(p).select().single();
   if(r.error){ toast('保存エラー: '+r.error.message); return; }
+  const savedHH = r.data;
+  if(p.head_name){
+    const existingHead = RES.find(x=>x.household_id===savedHH.id && (x.is_head || x.relation==='世帯主'));
+    if(!existingHead){
+      const hp={ household_id:savedHH.id, name:p.head_name, relation:'世帯主',
+        is_head:true, status:'在住', external:false,
+        updated_at:new Date().toISOString() };
+      const rr = await sb.from('nerome_residents').insert(hp);
+      if(rr.error){ toast('世帯主の自動登録に失敗: '+rr.error.message); }
+    }
+  }
   await loadAll();
-  curHH = HH.find(h=>h.id===r.data.id);
+  curHH = HH.find(h=>h.id===savedHH.id);
   document.getElementById('hh-title').textContent = curHH.yagou||curHH.head_name||'世帯';
   document.getElementById('delhh').style.display='inline-block';
   document.getElementById('addres').style.display='inline-block';
