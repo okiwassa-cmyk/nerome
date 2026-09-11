@@ -283,12 +283,10 @@ main{padding:14px;max-width:900px;margin:0 auto}
           </datalist></div>
         <div class="field"><label>勤務先</label><input id="r-work" placeholder="例: ○○農園 / 大宜味村役場 …"></div>
       </div>
-      <div class="field">
-        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
-          <input id="r-external" type="checkbox" onchange="toggleExternal()">
-          村外家族（この村に住んでいない兄弟・親戚など）
-        </label>
-      </div>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin:6px 0 10px;font-size:14px">
+        <input id="r-external" type="checkbox" onchange="toggleExternal()" style="width:18px;height:18px;flex:0 0 auto">
+        村外家族（この村に住んでいない兄弟・親戚など）
+      </label>
       <div class="field" id="r-address-wrap" style="display:none">
         <label>現住所</label>
         <input id="r-address" placeholder="例: 那覇市首里…">
