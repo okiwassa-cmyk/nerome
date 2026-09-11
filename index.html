@@ -274,6 +274,14 @@ main{padding:14px;max-width:900px;margin:0 auto}
         <div class="field"><label>電話</label><input id="r-phone" type="tel"></div>
         <div class="field"><label>状態</label>
           <select id="r-status"><option>在住</option><option>転出</option><option>死亡</option></select></div>
+        <div class="field"><label>職業</label><input id="r-occ" list="occlist" placeholder="例: 農業 / 公務員 / 会社員 …">
+          <datalist id="occlist">
+            <option>農業</option><option>漁業</option><option>建設業</option>
+            <option>会社員</option><option>公務員</option><option>自営業</option>
+            <option>教員</option><option>介護</option><option>看護師</option>
+            <option>主婦・主夫</option><option>学生</option><option>無職・年金</option>
+          </datalist></div>
+        <div class="field"><label>勤務先</label><input id="r-work" placeholder="例: ○○農園 / 大宜味村役場 …"></div>
       </div>
       <div class="field">
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
@@ -635,7 +643,8 @@ function renderRes(){
           ${r.status!=='在住'?`<span class="chip warn" style="margin-left:4px">${esc(r.status)}</span>`:''}</div>
         <div class="res-sub">${esc(r.kana||'')}
           ${r.birth_date?`　${esc(r.birth_date)}　満${a}歳 / 数え${k}`:''}
-          ${r.phone?`　${esc(r.phone)}`:''}</div>
+          ${r.phone?`　${esc(r.phone)}`:''}
+          ${r.occupation||r.workplace?`<br>${esc([r.occupation,r.workplace].filter(Boolean).join(' / '))}`:''}</div>
       </div>
       <div class="muted">›</div>
     </div>`;
@@ -661,6 +670,7 @@ function openRes(id){
   setv('r-name',r.name); setv('r-kana',r.kana); setv('r-rel',r.relation);
   setv('r-bd',r.birth_date); setv('r-phone',r.phone); setv('r-notes',r.notes);
   setv('r-address', r.address);
+  setv('r-occ', r.occupation); setv('r-work', r.workplace);
   document.getElementById('r-external').checked = !!r.external;
   document.getElementById('r-gender').value=r.gender||'';
   document.getElementById('r-status').value=r.status||'在住';
@@ -686,6 +696,7 @@ async function saveRes(){
     phone:v('r-phone')||null, status:document.getElementById('r-status').value,
     notes:v('r-notes')||null, is_head:!ex && v('r-rel')==='世帯主',
     external: ex, address: ex ? (v('r-address')||null) : null,
+    occupation: v('r-occ')||null, workplace: v('r-work')||null,
     updated_at:new Date().toISOString() };
   if(!p.name){ toast('氏名を入れてください'); return; }
   const r = curRes
