@@ -733,15 +733,15 @@ async function delHH(){
 function initPickMap(){
   const c = (pickLat!=null) ? [pickLat,pickLng] : CENTER;
   if(!pickMap){
-    pickMap = L.map('pickmap').setView(c, pickLat!=null?18:16);
+    pickMap = L.map('pickmap', {maxZoom:22}).setView(c, pickLat!=null?19:17);
     const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-      {maxZoom:19, attribution:'© OpenStreetMap'});
+      {maxNativeZoom:19, maxZoom:22, attribution:'© OpenStreetMap'});
     const gsiStd = L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png',
-      {maxZoom:18, attribution:'地理院タイル'});
+      {maxNativeZoom:18, maxZoom:22, attribution:'地理院タイル'});
     const gsiPale = L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png',
-      {maxZoom:18, attribution:'地理院タイル'});
+      {maxNativeZoom:18, maxZoom:22, attribution:'地理院タイル'});
     const gsiPhoto = L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg',
-      {maxZoom:18, attribution:'地理院タイル（写真）'});
+      {maxNativeZoom:18, maxZoom:22, attribution:'地理院タイル（写真）'});
     gsiStd.addTo(pickMap);
     L.control.layers({
       '地理院地図（建物・区画）': gsiStd,
@@ -750,7 +750,7 @@ function initPickMap(){
       'OpenStreetMap': osm,
     }, null, {position:'topright', collapsed:true}).addTo(pickMap);
     pickMap.on('click', e=>{ setPin(e.latlng.lat, e.latlng.lng); });
-  } else { pickMap.setView(c, pickLat!=null?18:16); }
+  } else { pickMap.setView(c, pickLat!=null?19:17); }
   setTimeout(()=>pickMap.invalidateSize(),120);
   drawPin();
 }
@@ -932,15 +932,15 @@ async function delRel(id){
 /* ===================== 地図 ===================== */
 function initMap(){
   if(!map){
-    map = L.map('map').setView(CENTER,16);
+    map = L.map('map', {maxZoom:22}).setView(CENTER,16);
     const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-      {maxZoom:19, attribution:'© OpenStreetMap'});
+      {maxNativeZoom:19, maxZoom:22, attribution:'© OpenStreetMap'});
     const gsiStd = L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png',
-      {maxZoom:18, attribution:'地理院タイル'});
+      {maxNativeZoom:18, maxZoom:22, attribution:'地理院タイル'});
     const gsiPale = L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png',
-      {maxZoom:18, attribution:'地理院タイル'});
+      {maxNativeZoom:18, maxZoom:22, attribution:'地理院タイル'});
     const gsiPhoto = L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg',
-      {maxZoom:18, attribution:'地理院タイル（写真）'});
+      {maxNativeZoom:18, maxZoom:22, attribution:'地理院タイル（写真）'});
     gsiStd.addTo(map);
     L.control.layers({
       '地理院地図（建物・区画）': gsiStd,
